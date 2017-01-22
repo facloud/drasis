@@ -1,0 +1,135 @@
+#!/bin/bash
+set -e
+BASE_PATH=$(cd $(dirname $BASH_SOURCE)/..; pwd)
+source $BASE_PATH/hack/message_printing.sh
+
+usage() {
+  echo "Usage:"
+  echo "run-tests               --- run all the tests"
+  echo "run-tests -c            --- create coverage report"
+  echo "run-tests -m <Module>   --- only run tests in given module"
+  echo "  only run tests in given file"
+  echo "run-tests -v            --- run tests in verbose mode"
+  echo "run-tests -h            --- print help menu"
+}
+
+ping_rabbitmq() {
+  ping_cmd="docker"
+  ping_cmd=$ping_cmd" exec"
+  ping_cmd=$ping_cmd" test-drasis-rabbitmq"
+  ping_cmd=$ping_cmd" rabbitmqctl status"
+
+  if eval $ping_cmd | grep RabbitMQ > /dev/null; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+setup_rabbitmq() {
+  info "Starting RabbitMQ Docker container"
+  cmd="docker"
+  cmd=$cmd" run"
+  cmd=$cmd" -d"
+  cmd=$cmd" --name test-drasis-rabbitmq"
+  cmd=$cmd" -p 15672:5672"
+  cmd=$cmd" rabbitmq"
+  debug "About to run '$cmd'"
+  DOCKER_CONTAINER_ID=$(eval $cmd)
+  info "Container is '$DOCKER_CONTAINER_ID'"
+
+
+  info "Pinging RabbitMQ:"
+  while true; do
+    if ! ping_rabbitmq; then
+      debug "Not yet UP, retrying..."
+      sleep 0.2
+      continue
+    fi
+    break
+  done
+  info "RabbitMQ is now UP!"
+}
+
+setup() {
+  setup_rabbitmq
+}
+
+run_nose() {
+  # command
+  cmd="nosetests"
+  if [ $WITH_COVERAGE -eq 1 ]; then
+    cmd=$cmd" --with-coverage"
+    cmd=$cmd" --cover-package drasis"
+    cmd=$cmd" --cover-html"
+    cmd=$cmd" --cover-erase"
+    cmd=$cmd" --cover-html-dir coveragereport"
+  fi
+  [ $DEBUG -eq 1 ] && cmd=$cmd" -v"
+  [ "$MODULE" != "" ] && cmd=$cmd" $MODULE"
+
+  # envars
+  export TEST_DRASIS_RABBITMQ_PORT=15672
+  [ $DEBUG -eq 1 ] && export TEST_DRASIS_DEBUG=1
+
+  info "About to run '$cmd'"
+
+  # run tests but don't blow up
+  info "--------- Nose output START ---------"
+  set +e
+  eval $cmd
+  TESTS_EXIT_CODE=$?
+  set -e
+  info "--------- Nose output END ---------"
+
+  info "Nose exited with code $TESTS_EXIT_CODE"
+}
+
+teardown_rabbitmq() {
+  debug "Removing RabbitMQ Docker container"
+  cmd="docker rm -f test-drasis-rabbitmq > /dev/null"
+  debug "About to run '$cmd'"
+  eval $cmd
+  info "RabbitMQ container has been cleaned up!"
+}
+
+teardown() {
+  teardown_rabbitmq
+}
+
+DEBUG=0
+MODULE=""
+WITH_COVERAGE=0
+while getopts "m:cvh" OPTION
+do
+  case $OPTION in
+    m)
+      MODULE=$OPTARG
+      ;;
+    c)
+      WITH_COVERAGE=1
+      ;;
+    v)
+      DEBUG=1
+      ;;
+    h)
+      usage
+      exit
+      ;;
+    *)
+      usage
+      exit
+      ;;
+  esac
+done
+
+debug "module='$MODULE'"
+debug "with_coverage=$WITH_COVERAGE"
+debug "verbose=$DEBUG"
+
+# some action...
+setup
+run_nose
+teardown
+
+exit $TESTS_EXIT_CODE

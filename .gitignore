@@ -1,0 +1,15 @@
+# Mac
+._*
+.DS_STORE
+.DS_Store
+
+# Python byte-code
+*.pyc
+*.pyo
+
+# IDE
+/.ropeproject
+
+# Coverage
+/.coverage
+/coveragereport
