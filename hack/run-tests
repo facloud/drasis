@@ -6,6 +6,7 @@ source $BASE_PATH/hack/message_printing.sh
 usage() {
   echo "Usage:"
   echo "run-tests               --- run all the tests"
+  echo "run-tests -r            --- run RabbitMQ server"
   echo "run-tests -c            --- create coverage report"
   echo "run-tests -m <Module>   --- only run tests in given module"
   echo "  only run tests in given file"
@@ -52,7 +53,9 @@ setup_rabbitmq() {
 }
 
 setup() {
-  setup_rabbitmq
+  if [ $WITH_RABBITMQ -eq 1 ]; then
+    setup_rabbitmq
+  fi
 }
 
 run_nose() {
@@ -69,7 +72,7 @@ run_nose() {
   [ "$MODULE" != "" ] && cmd=$cmd" $MODULE"
 
   # envars
-  export TEST_DRASIS_RABBITMQ_PORT=15672
+  [ $WITH_RABBITMQ -eq 1 ] && export TEST_DRASIS_RABBITMQ_PORT=15672
   [ $DEBUG -eq 1 ] && export TEST_DRASIS_DEBUG=1
 
   info "About to run '$cmd'"
@@ -94,17 +97,23 @@ teardown_rabbitmq() {
 }
 
 teardown() {
-  teardown_rabbitmq
+  if [ $WITH_RABBITMQ -eq 1 ]; then
+    teardown_rabbitmq
+  fi
 }
 
 DEBUG=0
 MODULE=""
+WITH_RABBITMQ=0
 WITH_COVERAGE=0
-while getopts "m:cvh" OPTION
+while getopts "m:rfcvh" OPTION
 do
   case $OPTION in
     m)
       MODULE=$OPTARG
+      ;;
+    r)
+      WITH_RABBITMQ=1
       ;;
     c)
       WITH_COVERAGE=1
@@ -124,6 +133,7 @@ do
 done
 
 debug "module='$MODULE'"
+debug "with_rabbitmq=$WITH_RABBITMQ"
 debug "with_coverage=$WITH_COVERAGE"
 debug "verbose=$DEBUG"
 

@@ -1,8 +1,7 @@
-import os
-import logging
+from os import environ
 from urllib import request
 
-from unittest import TestCase
+from unittest import skipIf, TestCase
 
 from nameko.rpc import rpc
 from nameko.standalone.rpc import ClusterRpcProxy
@@ -19,17 +18,18 @@ class TestService(object):
         return msg + ' back'
 
 
+@skipIf('TEST_DRASIS_RABBITMQ_PORT' not in environ.keys(),
+        'No RabbitMQ server found for this test to run.')
 class TestRunner(TestCase):
     def setUp(self):
         # setup global logger
         configure_global_logger()
 
         # AMQP URI
-        rabbitmq_port = int(os.environ.get('TEST_DRASIS_RABBITMQ_PORT', 15672))
+        rabbitmq_port = int(environ.get('TEST_DRASIS_RABBITMQ_PORT', 15672))
         self.amqp_uri = 'amqp://guest:guest@localhost:{:d}'.format(
             rabbitmq_port
         )
-        logging.debug('amqp_uri = {:s}'.format(self.amqp_uri))
 
         # setup runner
         self.runner = Runner(Config(self.amqp_uri, '0.0.0.0:12222'))
