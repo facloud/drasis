@@ -2,7 +2,7 @@ import os
 import logging
 from urllib import request
 
-from unittest2 import TestCase
+from unittest import TestCase
 
 from nameko.rpc import rpc
 from nameko.standalone.rpc import ClusterRpcProxy
