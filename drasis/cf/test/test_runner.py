@@ -1,5 +1,6 @@
 import os
 import logging
+from urllib import request
 
 from unittest2 import TestCase
 
@@ -41,7 +42,10 @@ class TestRunner(TestCase):
         self.runner.stop()
 
     def test_health_endpint(self):
-        pass
+        self.assertEqual(
+            request.urlopen("http://127.0.0.1:12222/health").read(),
+            b'OK'
+        )
 
     def test_rpc(self):
         config = {'AMQP_URI': self.amqp_uri}

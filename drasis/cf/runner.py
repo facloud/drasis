@@ -4,9 +4,6 @@ wraps the standard `nameko` runner to take care of running a single `nameko`
 service while providing a health HTTP endpoint.
 """
 
-import os
-import json
-
 import eventlet
 eventlet.monkey_patch()  # noqa (code before rest of imports)
 
@@ -23,9 +20,9 @@ class Config(object):
 class HealthService(object):
     name = 'health_service'
 
-    @http('GET', '/')
+    @http('GET', '/health')
     def get_method(self, req):
-        return json.dumps(os.environ.__dict__)
+        return 'OK'
 
 
 class Runner(ServiceRunner):
